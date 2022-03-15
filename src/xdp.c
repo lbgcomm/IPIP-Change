@@ -16,6 +16,8 @@
 #include "xdp.h"
 #include "csum.h"
 
+//#define REPLACE_SOURCE_REMOTE 0
+//#define REPLACE_SOURCE_WITH_INNER
 //#define DEBUG
 
 #ifdef DEBUG
