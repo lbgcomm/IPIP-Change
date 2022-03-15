@@ -1,0 +1,3 @@
+[submodule "modules/libbpf"]
+	path = modules/libbpf
+	url = https://github.com/libbpf/libbpf.git

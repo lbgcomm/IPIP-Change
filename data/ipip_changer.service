@@ -1,0 +1,11 @@
+[Unit]
+Description=IPIP Changer.
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+ExecStart=/usr/bin/ipip_changer
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
