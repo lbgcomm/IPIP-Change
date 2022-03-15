@@ -223,6 +223,8 @@ int main(int argc, char *argv[])
     if (cmd.interface == NULL)
     {
         fprintf(stderr, "Interface not defined in command line.\n");
+
+        return EXIT_FAILURE;
     }
 
     // Raise RLimit.
