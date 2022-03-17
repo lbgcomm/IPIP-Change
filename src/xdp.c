@@ -16,6 +16,14 @@
 #include "xdp.h"
 #include "csum.h"
 
+struct bpf_map_def SEC("maps") mapping =
+{
+    .type = BPF_MAP_TYPE_LRU_HASH,
+    .key_size = sizeof(__be32),
+    .value_size = sizeof(__be32),
+    .max_entries = 10000
+};
+
 //#define REPLACE_SOURCE_REMOTE 0
 //#define REPLACE_SOURCE_WITH_INNER
 //#define DEBUG
@@ -73,6 +81,9 @@ int xdp_prog_main(struct xdp_md *ctx)
         return XDP_DROP;
     }
 
+    // Also map client IP with edge IP.
+    bpf_map_update_elem(&mapping, &iph->saddr, &oiph->saddr, BPF_ANY);
+
 #ifdef REPLACE_SOURCE_REMOTE
     // Replace the outer IP header's source address with this.
     __be32 oldremote = oiph->saddr;
@@ -84,7 +95,7 @@ int xdp_prog_main(struct xdp_md *ctx)
     #endif
 
 #ifdef DEBUG
-    bpf_printk("[TC_MAPPER] Replacing source IP %lu with %lu.\n", oldremote, oiph->saddr);
+    bpf_printk("[IPIP_CHANGER] Replacing source IP %lu with %lu.\n", oldremote, oiph->saddr);
 #endif    
 
     oiph->check = csum_diff4(oldremote, oiph->saddr, oiph->check);
