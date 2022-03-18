@@ -268,6 +268,9 @@ void update_tc_map(int tc_fd)
 
         if (val.time < (now - 5000000000))
         {
+            prev_key = key;
+
+
             continue;
         }
 
@@ -278,6 +281,8 @@ void update_tc_map(int tc_fd)
         {
             fprintf(stderr, "Error updating TC map.\n");
         }
+
+        prev_key = key;
     }
 }
 #endif
