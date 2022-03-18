@@ -20,3 +20,9 @@
 #endif
 
 #define NULL ((void*)0)
+
+struct mapper
+{
+    __be32 dest_ip;
+    __u64 time;
+};

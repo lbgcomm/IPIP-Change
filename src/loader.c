@@ -19,6 +19,9 @@
 #include <libbpf.h>
 
 #include "loader.h"
+#include "xdp.h"
+
+#include "sys/sysinfo.h"
 
 // Other variables.
 static __u8 cont = 1;
@@ -32,6 +35,10 @@ const struct option opts[] =
     {"dev", required_argument, NULL, 'd'},
     {NULL, 0, NULL, 0}
 };
+
+int xdp_map_fd;
+
+//#define UPDATE_OTHER_MAP
 
 void parsecommandline(struct cmdline *cmd, int argc, char *argv[])
 {
@@ -102,6 +109,9 @@ int loadbpfobj(const char *filename, __u8 offload, int ifidx)
 
         return fd;
     }
+
+    // Get the mapping FD.
+    xdp_map_fd = bpf_object__find_map_fd_by_name(obj, "mapping");
 
     struct bpf_program *prog;
 
@@ -214,6 +224,64 @@ int attachxdp(int ifidx, int progfd, struct cmdline *cmd)
     return mode;
 }
 
+
+#ifdef UPDATE_OTHER_MAP
+int bpf_map_get_next_key_and_delete(int fd, const void *key, void *next_key, int *delete)
+{
+    int res = bpf_map_get_next_key(fd, key, next_key);
+
+    if (*delete) 
+    {
+        bpf_map_delete_elem(fd, key);
+        *delete = 0;
+    }
+
+    return res;
+}
+
+void update_tc_map(int tc_fd)
+{
+    if (tc_fd < 0)
+    {
+        return;
+    }
+
+    struct sysinfo inf = {0};
+    sysinfo(&inf);
+
+    __u64 now = inf.uptime * (__u64)1000000000;
+
+    __be32 key = 0;
+    __be32 prev_key = 0;
+    int delete_previous = 0;
+    struct mapper val;
+
+    while(bpf_map_get_next_key_and_delete(xdp_map_fd, &prev_key, &key, &delete_previous) == 0)
+    {
+        // Get the value itself.
+        if (bpf_map_lookup_elem(xdp_map_fd, &key, &val) < 0)
+        {
+            prev_key = key;
+
+            continue;
+        }
+
+        if (val.time < (now - 5000000000))
+        {
+            continue;
+        }
+
+        __be32 new_val = val.dest_ip;
+
+
+        if (bpf_map_update_elem(tc_fd, &key, &new_val, BPF_ANY) != 0)
+        {
+            fprintf(stderr, "Error updating TC map.\n");
+        }
+    }
+}
+#endif
+
 int main(int argc, char *argv[])
 {
     // Parse the command line.
@@ -271,11 +339,20 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    int tc_map_fd = -1;
+
+    tc_map_fd = bpf_obj_get("/sys/fs/bpf/tc/globals/mapping");
+
     // Signal.
     signal(SIGINT, signalHndl);
 
     while (cont)
     {
+
+#ifdef UPDATE_OTHER_MAP
+        update_tc_map(tc_map_fd);
+#endif
+
         sleep(1);
     }
 

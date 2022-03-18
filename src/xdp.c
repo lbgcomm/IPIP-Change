@@ -20,7 +20,7 @@ struct bpf_map_def SEC("maps") mapping =
 {
     .type = BPF_MAP_TYPE_LRU_HASH,
     .key_size = sizeof(__be32),
-    .value_size = sizeof(__be32),
+    .value_size = sizeof(struct mapper),
     .max_entries = 10000
 };
 
@@ -82,7 +82,12 @@ int xdp_prog_main(struct xdp_md *ctx)
     }
 
     // Also map client IP with edge IP.
-    bpf_map_update_elem(&mapping, &iph->saddr, &oiph->saddr, BPF_ANY);
+    __u64 now = bpf_ktime_get_ns();
+    struct mapper val = {0};
+    val.dest_ip = oiph->saddr;
+    val.time = now;
+
+    bpf_map_update_elem(&mapping, &iph->saddr, &val, BPF_ANY);
 
 #ifdef REPLACE_SOURCE_REMOTE
     // Replace the outer IP header's source address with this.
