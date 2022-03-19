@@ -244,9 +244,9 @@ void update_tc_map(int tc_fd)
     // Check if TC map isn't available. If not, try to get it again.
     if (tc_fd < 0)
     {
-        tc_fd = bpf_obj_get("/sys/fs/bpf/tc/globals/mapping")
+        tc_fd = bpf_obj_get("/sys/fs/bpf/tc/globals/mapping");
     }
-    
+
     if (tc_fd < 0)
     {
         return;
